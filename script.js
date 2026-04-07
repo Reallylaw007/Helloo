@@ -275,6 +275,7 @@ let questions = [];
 let currentQuestionIndex = 0;
 let scoreM = 0;
 let scoreU = 0;
+let playerName = "";
 
 const appContainer = document.getElementById('app');
 
@@ -293,14 +294,34 @@ function renderStartScreen() {
         <div class="text-center fade-in">
             <h1 class="title">แบบทดสอบวัดระดับความตึง</h1>
             <p class="subtitle">คุณเป็น 'เมะตัวพ่อ/แม่' รุกดุดัน หรือเป็นแค่ 'เคะผู้ประสบภัย' ที่แสนบอบบาง? อัปเกรดใหม่ 30 ข้อ!</p>
-            <button class="btn" onclick="startQuiz()">
-                เริ่มทำแบบทดสอบ 🚀
-            </button>
+            
+            <div class="input-group">
+                <input type="text" id="player-name" class="name-input" placeholder="ใส่ชื่อของคุณที่นี่..." autocomplete="off">
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button class="btn" onclick="startQuiz()">
+                    เริ่มทำแบบทดสอบ 🚀
+                </button>
+                <button class="btn btn-secondary" onclick="renderHistory()">
+                    ดูประวัติการเล่น 📜
+                </button>
+            </div>
         </div>
     `;
 }
 
 function startQuiz() {
+    const nameInput = document.getElementById('player-name');
+    if (nameInput) {
+        playerName = nameInput.value.trim();
+        if (!playerName) {
+            alert('กรุณาใส่ชื่อของคุณก่อนเริ่มทำแบบทดสอบ!');
+            nameInput.focus();
+            return;
+        }
+    }
+
     // Shuffle the questions order, and shuffle the options for each question
     questions = shuffleArray(questionsBase).map(q => {
         return {
@@ -388,18 +409,98 @@ function renderResult() {
         icon = "⚔️";
     }
 
+    // Save result to LocalStorage
+    saveResultToLocalStorage(playerName, resultTitle, scoreM, scoreU);
+
     appContainer.innerHTML = `
         <div class="result-container fade-in">
-            <span class="result-score">คะแนนของคุณ: เมะ ${scoreM} | เคะ ${scoreU}</span>
+            <h3 style="color: var(--text-muted); margin-bottom: 0.5rem;">คุณ ${playerName}</h3>
+            <span class="result-score">คะแนน: เมะ ${scoreM} | เคะ ${scoreU}</span>
             <div style="font-size: 5rem; margin-bottom: 1rem;">${icon}</div>
             <h2 class="title" style="font-size: 2rem;">ผลลัพธ์ของคุณคือ...</h2>
             <h1 class="result-type">${resultTitle}</h1>
             <p class="result-desc">${resultDesc}</p>
-            <button class="btn" onclick="startQuiz()" style="margin-top: 1rem;">
-                ลองเล่นใหม่อีกครั้ง 🔄
-            </button>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+                <button class="btn" onclick="renderStartScreen()">
+                    กลับหน้าแรก 🏠
+                </button>
+                <button class="btn btn-secondary" onclick="renderHistory()">
+                    ดูประวัติ 📜
+                </button>
+            </div>
         </div>
     `;
+}
+
+function saveResultToLocalStorage(name, title, sm, su) {
+    if (!name) return;
+    try {
+        const history = JSON.parse(localStorage.getItem('quizHistory')) || [];
+        const newRecord = {
+            id: Date.now(),
+            name: name,
+            title: title,
+            scoreM: sm,
+            scoreU: su,
+            date: new Date().toLocaleString('th-TH')
+        };
+        history.unshift(newRecord); // Add to beginning
+        localStorage.setItem('quizHistory', JSON.stringify(history));
+    } catch(e) {
+        console.error('Error saving to LocalStorage', e);
+    }
+}
+
+function renderHistory() {
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('quizHistory')) || [];
+    } catch(e) {
+        console.error('Error reading from LocalStorage', e);
+    }
+
+    let historyHtml = '';
+    if (history.length === 0) {
+        historyHtml = `<p class="text-muted" style="text-align:center; padding: 2rem 0;">ยังไม่มีประวัติการเล่น เล่นเลยสิ!</p>`;
+    } else {
+        history.forEach(item => {
+            historyHtml += `
+                <div class="history-item">
+                    <div>
+                        <div class="history-name">${item.name}</div>
+                        <div class="history-meta">${item.date} • เมะ: ${item.scoreM} | เคะ: ${item.scoreU}</div>
+                    </div>
+                    <div style="font-weight: bold; color: var(--text-main); text-align: right; max-width: 50%;">
+                        ${item.title}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    appContainer.innerHTML = `
+        <div class="fade-in">
+            <h1 class="title text-center" style="font-size: 2rem;">ประวัติการทำแบบทดสอบ</h1>
+            <div class="history-container">
+                ${historyHtml}
+            </div>
+            <div class="text-center" style="margin-top: 2rem;">
+                <button class="btn" onclick="renderStartScreen()">
+                    กลับหน้าแรก 🏠
+                </button>
+                <button class="btn btn-secondary" onclick="clearHistory()" style="margin-left: 1rem;">
+                    ล้างประวัติ 🗑️
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function clearHistory() {
+    if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติทั้งหมด?")) {
+        localStorage.removeItem('quizHistory');
+        renderHistory();
+    }
 }
 
 // Initialize app
