@@ -277,6 +277,32 @@ let scoreM = 0;
 let scoreU = 0;
 let playerName = "";
 
+// Web Audio API for synthetic click sounds
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playClickSound() {
+    // We only resume audio context on a user gesture
+    if(audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    // Create a quick soft "pop/click"
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Keep volume at 30%
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.05);
+}
+
 const appContainer = document.getElementById('app');
 
 // Utility function to shuffle an array
@@ -290,6 +316,9 @@ function shuffleArray(array) {
 }
 
 function renderStartScreen() {
+    // Optionally play sound if already resumed (might not play on first load)
+    if(audioCtx.state === 'running') playClickSound();
+
     appContainer.innerHTML = `
         <div class="text-center fade-in">
             <h1 class="title">แบบทดสอบวัดระดับความตึง</h1>
@@ -312,6 +341,8 @@ function renderStartScreen() {
 }
 
 function startQuiz() {
+    playClickSound();
+    
     const nameInput = document.getElementById('player-name');
     if (nameInput) {
         playerName = nameInput.value.trim();
@@ -367,6 +398,8 @@ function renderQuestion() {
 }
 
 function selectOption(type) {
+    playClickSound();
+
     if (type === 'M') scoreM++;
     else scoreU++;
 
@@ -452,6 +485,8 @@ function saveResultToLocalStorage(name, title, sm, su) {
 }
 
 function renderHistory() {
+    playClickSound();
+
     let history = [];
     try {
         history = JSON.parse(localStorage.getItem('quizHistory')) || [];
@@ -497,6 +532,7 @@ function renderHistory() {
 }
 
 function clearHistory() {
+    playClickSound();
     if (confirm("คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติทั้งหมด?")) {
         localStorage.removeItem('quizHistory');
         renderHistory();
